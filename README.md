@@ -67,3 +67,17 @@ A hub-and-spoke architecture delivers:
 ### Real-World Context
 
 This design mirrors patterns I observed while managing Azure projects in real enterprise environments.
+
+## Modules and Stacks
+
+After researching Bicep best practices and following Microsoft Learn sessions, I structured this project around reusable modules and deployment stacks. This pattern cleanly separates infrastructure components (modules) from deployment orchestration (stacks).
+
+Modules act as the building blocks, with each one representing a single infrastructure component such as a virtual network or a peering connection. For example, the vnet.bicep module accepts parameters for the name, address space, and subnets, and then provisions a VNet resource. These modules are generic and reusable across multiple deployments.
+
+Stacks handle orchestration by combining modules with environment-specific configuration. The hub stack includes a main.bicep orchestrator that imports the naming convention module, defines the hub’s four subnets and CIDR ranges in a parameter file, and then invokes the vnet.bicep module using those values. The same pattern is applied to each of the three spoke stacks: the same vnet.bicep module, but with different parameters.
+
+This separation allows me to reuse vnet.bicep four times (one hub and three spokes) without duplicating code, while each stack’s parameter file clearly highlights what makes that environment unique.
+
+## Incrementally Building 
+
+I’m building this incrementally so each component can be tested in isolation. 

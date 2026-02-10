@@ -46,38 +46,20 @@ infra/
 
 ### One Template, Three Spokes
 
-Rather than deploying all spokes in a single template, I deploy the same `spokes/main.bicep` file three times using different parameter files.
+Rather than deploying all spokes from a single template, I deploy the same spokes/main.bicep file three times using different parameter files. I spent a significant amount of time researching this approach and even posted the question on the Azure Discord to gather feedback. The responses were helpful and reinforced that the choice between a single main Bicep file and multiple main Bicep files (for example, separate hub and spoke templates) largely depends on whether the infrastructure is managed by one network team or multiple teams.
 
-**Why this approach?**
+Initially, I planned to use a single main Bicep file, assuming a centralized network team model. However, after further consideration, I chose this approach because it better supports scenarios where different teams manage and deploy the hub and each of the three spokes independently. That said, it’s important to emphasize that both approaches are valid—the right choice ultimately depends on how your organization is structured and operates.
 
-* You can test `spoke1` before deploying `spoke2`
-* Application teams can update their spoke independently
+**Other Reasons for this Approach**
+
+* You can test `spoke1` before deploying `spoke2` - This helped so if something went wrong with spoke1, I could go back and fix it before deploying the other two spokes. 
 * New spokes can be added without redeploying existing ones
 
 At a previous company, the network team owned and deployed all spokes together. That approach can work well depending on team structure. I chose a modular design to demonstrate familiarity with both patterns.
 
----
-
-### Centralized Naming
-
-All resource names are generated from `naming.bicep`, ensuring consistent naming across deployments:
-
-```
-az-pola-dev-hubspoke-eastus-vnet-hub
-az-pola-dev-hubspoke-eastus-vnet-spoke-app
-```
-
-I learned the hard way that when each deployment constructs names slightly differently, you end up with an unmanageable mess six months later. A single naming module prevents that drift.
-
----
-
 ### One Subscription
 
-This project runs in a single Azure subscription, with `dev` included in all resource names.
-
-In production, you’d typically separate dev, test, and prod into different subscriptions to isolate costs and enforce distinct security controls. The infrastructure code would remain the same—you’d simply deploy it to different subscriptions. I opted for a single subscription to keep costs down while job hunting.
-
----
+This project runs in a single Azure subscription, with `dev` included in all resource names. The reason for this is because I'm the only one working on this, and it helps me keep track of the work in one area.  However, in a real-life scenario, it would typically be three separate subscriptions -- Dev, Test, and Prod. This helps in cost management and enforcing different security controls.  I would even have AI be in its own subscription being that it's new and it would probably have additional compliance it has to adhere to. 
 
 ## How to Deploy
 
@@ -115,9 +97,6 @@ This is the foundation. Planned next steps include:
 4. **Test VMs** – Validate end-to-end connectivity
 5. **Firewall** – Add Azure Firewall for centralized inspection (budget permitting)
 
-I’m building this incrementally so each component can be tested in isolation. That’s how you avoid debugging a massive deployment that fails at step 47.
-
----
 
 ## What I Learned
 
