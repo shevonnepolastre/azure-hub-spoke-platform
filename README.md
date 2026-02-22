@@ -80,4 +80,14 @@ This separation allows me to reuse vnet.bicep four times (one hub and three spok
 
 ## Incrementally Building 
 
-I’m building this incrementally so each component can be tested in isolation. 
+I’m building this incrementally so each component can be tested in isolation.  The current roadmap is: 
+
+1. Naming Convention module 
+2. Start with the VNet bicep
+3. Stacks for the hub and three spokes that consist of:
+   1. Main bicep code that connects the naming convention with the module bicep
+   2. Bicep parameter files 
+4. Markdown file that has details of the bicep files
+5. Next will be the network security groups...
+
+Note: This is a live README file that I will update with every progression. 
