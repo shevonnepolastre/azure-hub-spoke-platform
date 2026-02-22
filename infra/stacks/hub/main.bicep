@@ -1,10 +1,14 @@
 targetScope = 'subscription'
 
+@description('Org/project code used in names')
+param prefix string = 'az-pola'
+
 @description('Environment')
 @allowed(['dev', 'test', 'prod'])
 param environment string = 'dev'
 
 @description('Azure region')
+@allowed(['centralus','eastus','eastus2','southcentralus','westus2','westus3'])
 param location string = 'eastus'
 
 @description('Hub VNet address space')
@@ -13,28 +17,24 @@ param addressPrefix string
 @description('Hub subnets')
 param subnets array
 
-// Import naming conventions
 module naming '../../globals/naming.bicep' = {
   name: 'naming-hub'
   params: {
-    prefix: 'az-pola'
+    prefix: prefix
     environment: environment
-    locationCode: location
+    location: location
   }
 }
 
-// Build hub-specific names
 var hubRgName = '${naming.outputs.resourceGroupName}-hub'
 var hubVnetName = '${naming.outputs.vnetName}-hub'
 
-// Create hub resource group
 resource hubRg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: hubRgName
   location: location
   tags: naming.outputs.commonTags
 }
 
-// Deploy hub VNet
 module hubVnet '../../modules/network/vnet.bicep' = {
   name: 'hub-vnet-deployment'
   scope: hubRg
@@ -47,7 +47,6 @@ module hubVnet '../../modules/network/vnet.bicep' = {
   }
 }
 
-// Outputs
 output hubVnetId string = hubVnet.outputs.vnetId
 output hubVnetName string = hubVnet.outputs.vnetName
 output hubRgName string = hubRg.name

@@ -1,0 +1,601 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.29.47.4906",
+      "templateHash": "15009028930214443221"
+    }
+  },
+  "parameters": {
+    "prefix": {
+      "type": "string",
+      "defaultValue": "az-pola",
+      "metadata": {
+        "description": "Org/project code"
+      }
+    },
+    "environment": {
+      "type": "string",
+      "defaultValue": "dev",
+      "allowedValues": [
+        "dev",
+        "test",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment"
+      }
+    },
+    "workload": {
+      "type": "string",
+      "defaultValue": "hubspoke",
+      "metadata": {
+        "description": "Workload identifier"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus",
+      "allowedValues": [
+        "centralus",
+        "eastus",
+        "eastus2",
+        "southcentralus",
+        "westus2",
+        "westus3"
+      ],
+      "metadata": {
+        "description": "Azure region"
+      }
+    },
+    "spokeName": {
+      "type": "string",
+      "metadata": {
+        "description": "Spoke identifier (app, intranet, ai)"
+      }
+    },
+    "addressPrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Spoke VNet address space"
+      }
+    },
+    "subnets": {
+      "type": "array",
+      "metadata": {
+        "description": "Spoke subnets"
+      }
+    },
+    "hubVnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Hub VNet resource ID for peering"
+      }
+    }
+  },
+  "variables": {
+    "nameBase": "[format('{0}-{1}-{2}', parameters('prefix'), parameters('environment'), parameters('location'))]",
+    "spokeRgName": "[format('{0}-rg-spoke-{1}', variables('nameBase'), parameters('spokeName'))]",
+    "rgTags": {
+      "Project": "[parameters('prefix')]",
+      "Environment": "[parameters('environment')]",
+      "Workload": "[parameters('workload')]",
+      "Owner": "ShevonnePolastre",
+      "Location": "[parameters('location')]",
+      "ManagedBy": "Bicep"
+    },
+    "hubRgName": "[format('{0}-rg-hub', variables('nameBase'))]",
+    "hubVnetName": "[format('{0}-vnet-hub', variables('nameBase'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('spokeRgName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('rgTags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('naming-spoke-{0}', parameters('spokeName'))]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "prefix": {
+            "value": "[parameters('prefix')]"
+          },
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.29.47.4906",
+              "templateHash": "15332727200484430715"
+            }
+          },
+          "parameters": {
+            "prefix": {
+              "type": "string",
+              "defaultValue": "az-pola",
+              "metadata": {
+                "description": "Org/project code used in names (lowercase for global resources)"
+              }
+            },
+            "environment": {
+              "type": "string",
+              "defaultValue": "dev",
+              "allowedValues": [
+                "dev",
+                "test",
+                "prod"
+              ],
+              "metadata": {
+                "description": "The environment being deployed to"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "eastus",
+              "allowedValues": [
+                "centralus",
+                "eastus",
+                "eastus2",
+                "southcentralus",
+                "westus2",
+                "westus3"
+              ],
+              "metadata": {
+                "description": "Azure region"
+              }
+            }
+          },
+          "variables": {
+            "commonTags": {
+              "Project": "[parameters('prefix')]",
+              "Environment": "[parameters('environment')]",
+              "Owner": "ShevonnePolastre",
+              "Location": "[parameters('location')]",
+              "ManagedBy": "Bicep"
+            },
+            "nameBase": "[format('{0}-{1}-{2}', parameters('prefix'), parameters('environment'), parameters('location'))]",
+            "naming": {
+              "rg": "[format('{0}-rg', variables('nameBase'))]",
+              "netmgr": "[format('{0}-netmgr', variables('nameBase'))]",
+              "nsg": "[format('{0}-nsg', variables('nameBase'))]",
+              "mon": "[format('{0}-mon', variables('nameBase'))]",
+              "law": "[format('{0}-law', variables('nameBase'))]",
+              "vnet": "[format('{0}-vnet', variables('nameBase'))]",
+              "vmWindows": "[format('{0}-vm-win', variables('nameBase'))]",
+              "vmLinux": "[format('{0}-vm-lin', variables('nameBase'))]",
+              "fw": "[format('{0}-fw', variables('nameBase'))]",
+              "subnet": "[format('{0}-snet', variables('nameBase'))]"
+            },
+            "patterns": {
+              "vnet": "[format('{0}-vnet-{{nn}}', variables('nameBase'))]",
+              "snet": "[format('{0}-snet-{{purpose}}-{{nn}}', variables('nameBase'))]",
+              "pip": "[format('{0}-pip-{{name}}', variables('nameBase'))]",
+              "nic": "[format('{0}-nic-{{name}}', variables('nameBase'))]",
+              "vm": "[format('{0}-vm-{{name}}', variables('nameBase'))]",
+              "fw": "[format('{0}-fw-{{name}}', variables('nameBase'))]",
+              "st": "[format('{0}{1}st{{nnn}}', parameters('prefix'), parameters('environment'))]"
+            }
+          },
+          "resources": [],
+          "outputs": {
+            "resourceGroupName": {
+              "type": "string",
+              "value": "[variables('naming').rg]"
+            },
+            "vnetName": {
+              "type": "string",
+              "value": "[variables('naming').vnet]"
+            },
+            "firewallName": {
+              "type": "string",
+              "value": "[variables('naming').fw]"
+            },
+            "logAnalyticsName": {
+              "type": "string",
+              "value": "[variables('naming').law]"
+            },
+            "commonTags": {
+              "type": "object",
+              "value": "[variables('commonTags')]"
+            },
+            "namingPatterns": {
+              "type": "object",
+              "value": "[variables('patterns')]"
+            },
+            "location": {
+              "type": "string",
+              "value": "[parameters('location')]"
+            },
+            "environment": {
+              "type": "string",
+              "value": "[parameters('environment')]"
+            },
+            "prefix": {
+              "type": "string",
+              "value": "[parameters('prefix')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('spoke-{0}-vnet', parameters('spokeName'))]",
+      "resourceGroup": "[variables('spokeRgName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vnetName": {
+            "value": "[format('{0}-spoke-{1}', reference(subscriptionResourceId('Microsoft.Resources/deployments', format('naming-spoke-{0}', parameters('spokeName'))), '2022-09-01').outputs.vnetName.value, parameters('spokeName'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "addressPrefix": {
+            "value": "[parameters('addressPrefix')]"
+          },
+          "subnets": {
+            "value": "[parameters('subnets')]"
+          },
+          "tags": {
+            "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('naming-spoke-{0}', parameters('spokeName'))), '2022-09-01').outputs.commonTags.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.29.47.4906",
+              "templateHash": "13922784317507667595"
+            }
+          },
+          "parameters": {
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "VNet name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "addressPrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "VNet address space"
+              }
+            },
+            "subnets": {
+              "type": "array",
+              "metadata": {
+                "description": "Subnets array"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2024-01-01",
+              "name": "[parameters('vnetName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "copy": [
+                  {
+                    "name": "subnets",
+                    "count": "[length(parameters('subnets'))]",
+                    "input": {
+                      "name": "[parameters('subnets')[copyIndex('subnets')].name]",
+                      "properties": {
+                        "addressPrefix": "[parameters('subnets')[copyIndex('subnets')].addressPrefix]",
+                        "defaultOutboundAccess": false
+                      }
+                    }
+                  }
+                ],
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('addressPrefix')]"
+                  ]
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "vnetId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+            },
+            "vnetName": {
+              "type": "string",
+              "value": "[parameters('vnetName')]"
+            },
+            "subnets": {
+              "type": "array",
+              "copy": {
+                "count": "[length(parameters('subnets'))]",
+                "input": {
+                  "name": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '2024-01-01').subnets[copyIndex()].name]",
+                  "id": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '2024-01-01').subnets[copyIndex()].id]"
+                }
+              }
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/deployments', format('naming-spoke-{0}', parameters('spokeName')))]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('spokeRgName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('peering-spoke-{0}-to-hub', parameters('spokeName'))]",
+      "resourceGroup": "[variables('spokeRgName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "localVnetName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('spokeRgName')), 'Microsoft.Resources/deployments', format('spoke-{0}-vnet', parameters('spokeName'))), '2022-09-01').outputs.vnetName.value]"
+          },
+          "remoteVnetId": {
+            "value": "[parameters('hubVnetId')]"
+          },
+          "peeringName": {
+            "value": "[format('spoke-{0}-to-hub', parameters('spokeName'))]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.29.47.4906",
+              "templateHash": "1423109580873691795"
+            }
+          },
+          "parameters": {
+            "localVnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the local VNet (where this peering resource lives)"
+              }
+            },
+            "remoteVnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the remote VNet (what you are peering to)"
+              }
+            },
+            "peeringName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name for this peering connection"
+              }
+            },
+            "allowForwardedTraffic": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Allow forwarded traffic from remote VNet"
+              }
+            },
+            "allowGatewayTransit": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Allow gateway transit"
+              }
+            },
+            "useRemoteGateways": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Use remote gateways"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}', parameters('localVnetName'), parameters('peeringName'))]",
+              "properties": {
+                "allowVirtualNetworkAccess": true,
+                "allowForwardedTraffic": "[parameters('allowForwardedTraffic')]",
+                "allowGatewayTransit": "[parameters('allowGatewayTransit')]",
+                "useRemoteGateways": "[parameters('useRemoteGateways')]",
+                "remoteVirtualNetwork": {
+                  "id": "[parameters('remoteVnetId')]"
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "peeringId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/virtualNetworks/virtualNetworkPeerings', parameters('localVnetName'), parameters('peeringName'))]"
+            },
+            "peeringName": {
+              "type": "string",
+              "value": "[parameters('peeringName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('spokeRgName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('spokeRgName')), 'Microsoft.Resources/deployments', format('spoke-{0}-vnet', parameters('spokeName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('peering-hub-to-spoke-{0}', parameters('spokeName'))]",
+      "resourceGroup": "[variables('hubRgName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "localVnetName": {
+            "value": "[variables('hubVnetName')]"
+          },
+          "remoteVnetId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('spokeRgName')), 'Microsoft.Resources/deployments', format('spoke-{0}-vnet', parameters('spokeName'))), '2022-09-01').outputs.vnetId.value]"
+          },
+          "peeringName": {
+            "value": "[format('hub-to-spoke-{0}', parameters('spokeName'))]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.29.47.4906",
+              "templateHash": "1423109580873691795"
+            }
+          },
+          "parameters": {
+            "localVnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the local VNet (where this peering resource lives)"
+              }
+            },
+            "remoteVnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the remote VNet (what you are peering to)"
+              }
+            },
+            "peeringName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name for this peering connection"
+              }
+            },
+            "allowForwardedTraffic": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Allow forwarded traffic from remote VNet"
+              }
+            },
+            "allowGatewayTransit": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Allow gateway transit"
+              }
+            },
+            "useRemoteGateways": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Use remote gateways"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}', parameters('localVnetName'), parameters('peeringName'))]",
+              "properties": {
+                "allowVirtualNetworkAccess": true,
+                "allowForwardedTraffic": "[parameters('allowForwardedTraffic')]",
+                "allowGatewayTransit": "[parameters('allowGatewayTransit')]",
+                "useRemoteGateways": "[parameters('useRemoteGateways')]",
+                "remoteVirtualNetwork": {
+                  "id": "[parameters('remoteVnetId')]"
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "peeringId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/virtualNetworks/virtualNetworkPeerings', parameters('localVnetName'), parameters('peeringName'))]"
+            },
+            "peeringName": {
+              "type": "string",
+              "value": "[parameters('peeringName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('spokeRgName')), 'Microsoft.Resources/deployments', format('spoke-{0}-vnet', parameters('spokeName')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "spokeRgName": {
+      "type": "string",
+      "value": "[variables('spokeRgName')]"
+    },
+    "spokeVnetName": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('spokeRgName')), 'Microsoft.Resources/deployments', format('spoke-{0}-vnet', parameters('spokeName'))), '2022-09-01').outputs.vnetName.value]"
+    },
+    "spokeVnetId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('spokeRgName')), 'Microsoft.Resources/deployments', format('spoke-{0}-vnet', parameters('spokeName'))), '2022-09-01').outputs.vnetId.value]"
+    },
+    "spokeSubnets": {
+      "type": "array",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('spokeRgName')), 'Microsoft.Resources/deployments', format('spoke-{0}-vnet', parameters('spokeName'))), '2022-09-01').outputs.subnets.value]"
+    },
+    "spokeToHubPeeringId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('spokeRgName')), 'Microsoft.Resources/deployments', format('peering-spoke-{0}-to-hub', parameters('spokeName'))), '2022-09-01').outputs.peeringId.value]"
+    },
+    "hubToSpokePeeringId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('hubRgName')), 'Microsoft.Resources/deployments', format('peering-hub-to-spoke-{0}', parameters('spokeName'))), '2022-09-01').outputs.peeringId.value]"
+    }
+  }
+}

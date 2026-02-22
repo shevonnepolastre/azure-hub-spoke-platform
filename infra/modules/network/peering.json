@@ -1,0 +1,78 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.40.2.10011",
+      "templateHash": "9469752461748317647"
+    }
+  },
+  "parameters": {
+    "localVnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the local VNet (where this peering resource lives)"
+      }
+    },
+    "remoteVnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the remote VNet (what you are peering to)"
+      }
+    },
+    "peeringName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name for this peering connection"
+      }
+    },
+    "allowForwardedTraffic": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Allow forwarded traffic from remote VNet"
+      }
+    },
+    "allowGatewayTransit": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Allow gateway transit"
+      }
+    },
+    "useRemoteGateways": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Use remote gateways"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+      "apiVersion": "2024-01-01",
+      "name": "[format('{0}/{1}', parameters('localVnetName'), parameters('peeringName'))]",
+      "properties": {
+        "allowVirtualNetworkAccess": true,
+        "allowForwardedTraffic": "[parameters('allowForwardedTraffic')]",
+        "allowGatewayTransit": "[parameters('allowGatewayTransit')]",
+        "useRemoteGateways": "[parameters('useRemoteGateways')]",
+        "remoteVirtualNetwork": {
+          "id": "[parameters('remoteVnetId')]"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "peeringId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Network/virtualNetworks/virtualNetworkPeerings', parameters('localVnetName'), parameters('peeringName'))]"
+    },
+    "peeringName": {
+      "type": "string",
+      "value": "[parameters('peeringName')]"
+    }
+  }
+}

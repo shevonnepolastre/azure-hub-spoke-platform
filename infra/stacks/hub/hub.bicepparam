@@ -20,3 +20,4 @@ param subnets = [
     addressPrefix: '10.0.3.0/24'  // Management subnet
   }
 ]
+

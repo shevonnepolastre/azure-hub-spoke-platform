@@ -1,5 +1,5 @@
 /*
-  Defines the naming convention for all resources deployed
+  Defines naming conventions and standard tags for resources deployed
   within the hub-and-spoke architecture.
 */
 
@@ -16,7 +16,7 @@ param prefix string = 'az-pola'
 ])
 param environment string = 'dev'
 
-@description('The location code allowed for resources')
+@description('Azure region')
 @allowed([
   'centralus'
   'eastus'
@@ -25,21 +25,18 @@ param environment string = 'dev'
   'westus2'
   'westus3'
 ])
-param locationCode string = 'eastus'
+param location string = 'eastus'
 
-var commonTags = { // Standard tags for all resources
+var commonTags = {
   Project: prefix
-  Environment: environment
-  Workload: 'hubspoke'
-  Owner: 'ShevonnePolastre' // keep ownership stable, not tied to VM admin
-  Location: locationCode
+  Environment: environment 
+  Owner: 'ShevonnePolastre'
+  Location: location
   ManagedBy: 'Bicep'
 }
 
-// Base name used for most resources
-var nameBase = '${prefix}-${environment}-${locationCode}'
+var nameBase = '${prefix}-${environment}-${location}'
 
-// Standard names (no “-name” placeholders, use suffix inputs per-resource)
 var naming = {
   rg: '${nameBase}-rg'
   netmgr: '${nameBase}-netmgr'
@@ -53,28 +50,23 @@ var naming = {
   subnet: '${nameBase}-snet'
 }
 
-// Helper pattern examples for resources that NEED a suffix/instance
-// Use these as conventions when you declare the actual resources:
 var patterns = {
-  vnet: '${nameBase}-vnet-{nn}'          // nn = 01, 02...
-  snet: '${nameBase}-snet-{purpose}-{nn}' // purpose = app, mgmt, priv, etc.
+  vnet: '${nameBase}-vnet-{nn}'
+  snet: '${nameBase}-snet-{purpose}-{nn}'
   pip: '${nameBase}-pip-{name}'
   nic: '${nameBase}-nic-{name}'
   vm:  '${nameBase}-vm-{name}'
   fw:  '${nameBase}-fw-{name}'
-  st:  '${prefix}${environment}st{nnn}'          // unique string function with resource group ID for storage accounts due to not able to handle dashes 
+  st:  '${prefix}${environment}st{nnn}' // storage accounts: lowercase, no dashes; add unique suffix when deployed
 }
 
 output resourceGroupName string = naming.rg
-output networkManagerName string = naming.netmgr
-output nsgName string = naming.nsg
-output monitoringName string = naming.mon
-output logAnalyticsName string = naming.law
 output vnetName string = naming.vnet
-output vmWindowsName string = naming.vmWindows
-output vmLinuxName string = naming.vmLinux
 output firewallName string = naming.fw
-output subnetName string = naming.subnet
+output logAnalyticsName string = naming.law
 output commonTags object = commonTags
 output namingPatterns object = patterns
-output locationCode string = locationCode
+output location string = location
+output environment string = environment
+output prefix string = prefix
+
