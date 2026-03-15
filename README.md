@@ -128,14 +128,7 @@ Repeat for `spoke2.bicepparam` and `spoke3.bicepparam`.
 
 ## Documentation
 
-| Doc | What it covers |
-|-----|---------------|
-| [NAMING.md](./documentation/NamingConvention.md) | Naming convention and resource abbreviations |
-| [PEERING.md](./documentation/VNet Peering.md) | VNet peering design and implementation |
-| [NSG.md](./documentation/Network Security Groups.md) | NSG design, rules by spoke, conditional deployment |
-| [HUB AND SPOKE VNETS.md](./documentation/Hub and Spoke Vnets.md) | Hub and Spoke Virtual Network approach |
-| [CONNECTIVITY TESTING.md](./documentation/VM Testing.md) | Connectivity testing approach and cleanup |
-
+Go to the Documentation folder for additional documentation 
 ---
 
 ## What I Learned
