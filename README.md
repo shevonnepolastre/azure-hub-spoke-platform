@@ -1,168 +1,139 @@
-## Hub-and-Spoke Network Infrastructure
+# Hub-and-Spoke Network Infrastructure
 
-I built this Azure hub-and-spoke network as a portfolio project to demonstrate hands-on 
-infrastructure skills. After managing Azure projects for years as a program manager, I 
-wanted to prove I could design and implement the architecture—not just coordinate the 
-teams building it.
+I'm a **Senior Program Manager** transitioning into **Azure Infrastructure Engineering**. 
+I've spent years managing Azure projects — coordinating the teams, tracking the 
+milestones, managing the risks. But I wanted to prove I could actually build the thing, 
+not just manage it.
+
+This project is my way of doing that.
 
 ---
 
 ## What This Is
 
-A production-style network topology with one central hub and three isolated workload 
-environments—the kind of setup you'd expect at a mid-to-large organization running Azure.
+A production-style hub-and-spoke network topology built entirely in Bicep — the kind 
+of architecture you'd find at a mid-to-large organization running workloads in Azure. 
+One central hub, three isolated spoke environments, NSGs enforcing least-privilege 
+traffic between tiers, and everything deployed as code.
 
 ![Azure Hub and Spoke Architecture](./documentation/diagrams/hub-spoke-architecture.png)
 
 ---
 
-## Real-Life Scenario
+## The Scenario
 
 ### The Company
-A mid-sized professional services firm with approximately 1,000 employees undergoing 
-rapid digital transformation. The organization runs three critical IT workloads that 
-must coexist securely in Azure.
+A professional services firm with about 1,000 employees going through a digital 
+transformation. They're moving workloads to Azure and need a network design that's 
+secure, scalable, and doesn't cost a fortune to operate.
 
-### The Challenge
-The company's IT landscape includes:
+### The Problem
+They have three very different workloads that need to coexist in Azure:
 
 - **Customer-facing web application**  
   A client portal used by 5,000+ external customers to access project updates, 
-  documents, and billing. This workload must be internet-accessible, highly available, 
-  and performant.
+  documents, and billing. It needs to be internet-accessible and highly available.
 
 - **Internal employee intranet**  
-  SharePoint sites, HR systems, file shares, and business applications used daily by 
-  all 1,000 employees. This environment must never be directly exposed to the internet 
-  but requires secure connectivity to on-premises systems via VPN.
+  SharePoint, HR systems, file shares — the stuff all 1,000 employees use every day. 
+  This should never be directly exposed to the internet but needs connectivity back 
+  to on-premises systems.
 
 - **AI experimentation environment**  
-  A new initiative where the data science team builds machine learning models using 
-  sensitive client data. This workload requires expensive GPU compute and strict 
-  isolation to prevent accidental data exposure or runaway costs.
+  The data science team is building ML models on sensitive client data. This needs 
+  strict isolation — a misconfiguration here could expose data or run up a massive 
+  compute bill.
 
-### Why They Needed Hub-and-Spoke
+They looked at three options before landing on hub-and-spoke:
 
-The company initially considered three options:
+- **One big VNet** — cheaper upfront but a security nightmare. A breach in the web 
+  app could pivot straight to HR data or AI training sets.
+- **Three isolated VNets** — great isolation but no way to share services, centralize 
+  monitoring, or run a single VPN gateway. Costs triple.
+- **Hub-and-spoke** — workload isolation plus centralized shared services. This is 
+  the right answer.
 
-- **One large VNet**  
-  A security risk—if the web application were compromised, attackers could potentially 
-  access internal HR systems or AI training data.
+### What the Architecture Delivers
 
-- **Three isolated VNets with no connectivity**  
-  Prevents centralized monitoring, logging, and VPN access while tripling the cost of 
-  shared services.
+- Each spoke is isolated — a breach in one can't reach another
+- One Azure Bastion, one VPN Gateway, one Log Analytics workspace serving all three 
+  spokes instead of duplicating resources
+- The network team sees all traffic from a single pane of glass
+- Each team gets scoped access — web team owns spoke1, IT owns spoke2, data science 
+  owns spoke3
+- All inter-spoke and outbound traffic routes through the hub for inspection
 
-- **Hub-and-spoke topology**  
-  Provides workload isolation while centralizing security and shared services.
+This mirrors patterns I've seen firsthand managing Azure projects in federal and 
+enterprise environments.
 
-### The Solution
+---
 
-A hub-and-spoke architecture delivers:
+## How It's Built
 
-- **Strong security boundaries**  
-  AI workloads are fully isolated from the public-facing web application. A breach in 
-  one spoke cannot pivot to another.
+I structured this around reusable Bicep modules and per-spoke parameter files. The 
+idea is simple: modules are the building blocks, parameter files are what make each 
+environment unique.
 
-- **Cost efficiency**  
-  A single Azure Bastion, VPN Gateway, and Azure Firewall serve all workloads instead 
-  of duplicating resources per environment.
+For example, `vnet.bicep` is deployed four times — once for the hub, once for each 
+spoke — with different parameters each time. No duplicated code, just different inputs.
 
-- **Centralized monitoring**  
-  The network team can observe traffic patterns across all spokes from a single Log 
-  Analytics workspace hosted in the hub.
+The same pattern applies to NSGs. One `nsg.bicep` module, one `nsg_associate.bicep` 
+module, and each spoke's parameter file defines exactly which rules it needs.
 
-- **Flexible access control**  
-  The web team has Contributor access to spoke1, IT owns spoke2, the data science team 
-  controls spoke3, and the network team maintains the hub foundation.
+---
 
-- **Traffic inspection**  
-  All inter-spoke and outbound traffic is routed through the hub, where Azure Firewall 
-  inspects and logs activity.
+## Where Things Stand
 
-- **Compliance and policy enforcement**  
-  Policies are analyzed and implemented to meet the security and governance requirements 
-  of each workload.
+I'm building this incrementally so I can test each piece before moving to the next:
 
-### Real-World Context
-
-This design mirrors patterns I observed while managing Azure projects in real enterprise 
-environments.
-
-## Modules and Stacks
-
-After researching Bicep best practices and following Microsoft Learn sessions, I 
-structured this project around reusable modules and deployment stacks. This pattern 
-cleanly separates infrastructure components (modules) from deployment orchestration 
-(stacks).
-
-Modules act as the building blocks, with each one representing a single infrastructure 
-component such as a virtual network or a peering connection. For example, the vnet.bicep 
-module accepts parameters for the name, address space, and subnets, and then provisions 
-a VNet resource. These modules are generic and reusable across multiple deployments.
-
-Stacks handle orchestration by combining modules with environment-specific configuration. 
-The hub stack includes a main.bicep orchestrator that imports the naming convention 
-module, defines the hub's four subnets and CIDR ranges in a parameter file, and then 
-invokes the vnet.bicep module using those values. The same pattern is applied to each 
-of the three spoke stacks: the same vnet.bicep module, but with different parameters.
-
-This separation allows me to reuse vnet.bicep four times (one hub and three spokes) 
-without duplicating code, while each stack's parameter file clearly highlights what 
-makes that environment unique.
-
-## Incrementally Building
-
-I'm building this incrementally so each component can be tested in isolation. Here's 
-where things stand:
-
-1. ✅ Naming Convention module
-2. ✅ VNet bicep module
-3. ✅ Stacks for the hub and three spokes:
-   - Main bicep that connects the naming convention with the module bicep
-   - Bicep parameter files per spoke
-4. ✅ VNet peering — bidirectional between hub and all three spokes, confirmed 
-   Connected and Fully Synchronized in the portal
-5. ✅ Network Security Groups:
-   - NSG module (`nsg.bicep`) with configurable rules passed in via parameter files
-   - NSG association module (`nsg_associate.bicep`) that attaches NSGs to subnets
-   - Conditional deployment logic so NSGs are only created for subnets that actually 
-     exist in each spoke — no orphaned resources
-   - Least-privilege rule sets per subnet tier across all three spokes
+1. ✅ Naming convention module
+2. ✅ VNet module
+3. ✅ Hub and three spoke stacks with parameter files
+4. ✅ Bidirectional VNet peering — confirmed Connected and Fully Synchronized in 
+   the portal for all three spokes
+5. ✅ Network Security Groups — conditional deployment per spoke, least-privilege 
+   rules per subnet tier, NSG-to-subnet association via Bicep
 6. 🔲 CI/CD pipelines via GitHub Actions
 7. 🔲 Intune Autopilot integration
 
-Note: This is a live README that I update with every progression.
+---
 
 ## NSG Design
 
-Each spoke has a different subnet structure, so the NSG design needed to be flexible. 
-Rather than hardcoding which NSGs to create per spoke, the template checks whether a 
-subnet exists in the parameter file before creating or attaching its NSG. This keeps 
-the template reusable — adding a new spoke only requires a new parameter file.
+Each spoke has a completely different subnet structure depending on its workload. 
+The public spoke has web, app, and data tiers. The intranet spoke only has an app 
+tier. The AI spoke has compute, data, services, and MLOps subnets.
+
+Rather than hardcoding which NSGs to create for each spoke, I used Bicep's `filter()` 
+function to check whether a subnet actually exists in the parameter file before 
+creating or attaching its NSG. No orphaned resources, and adding a new spoke only 
+requires a new parameter file — no changes to the template.
 
 ### Public Spoke — internet-facing workloads
-| Subnet | Traffic Rules |
-|--------|--------------|
+| Subnet | What it controls |
+|--------|-----------------|
 | WebSubnet | Allows HTTP/HTTPS inbound from internet; outbound to AppSubnet on 443 |
 | AppSubnet | Allows inbound from WebSubnet on 443; outbound to DataSubnet on 1433; blocks SSH and RDP from internet |
-| DataSubnet | Allows inbound from AppSubnet on 1433 only; denies everything else |
+| DataSubnet | Allows inbound from AppSubnet on 1433 only; denies everything else inbound |
 
 ### Intranet Spoke — internal employee systems
-| Subnet | Traffic Rules |
-|--------|--------------|
-| AppSubnet | Blocks all inbound from internet; allows outbound to private endpoints and AI-Services MLOps subnet |
+| Subnet | What it controls |
+|--------|-----------------|
+| AppSubnet | Blocks all inbound from internet; allows outbound to private endpoints and AI-Services |
 
 ### AI-Services Spoke — ML and data science workloads
-| Subnet | Traffic Rules |
-|--------|--------------|
+| Subnet | What it controls |
+|--------|-----------------|
 | AppSubnet | Allows inbound from intranet AppSubnet on 443 |
 | ComputeSubnet | Allows inbound from MLOps; outbound to AIData and AIServices |
 | DataSubnet | Allows inbound from AICompute on 1433 |
 | MLOpsSubnet | Allows outbound to AICompute, AIData, and AIServices |
 
-One thing worth calling out — there are no explicit return traffic rules in any of the 
-rule sets. That's intentional. Azure NSGs are stateful, so return traffic for established 
-connections is handled automatically.
+No explicit return traffic rules anywhere — Azure NSGs are stateful so that's handled 
+automatically.
 
-For full details on the NSG implementation see [NSG.md](./documentation/NSG.md).
+For the full details on the NSG implementation, see [NSG.md](./documentation/NSG.md).
+
+---
+
+Note: This is a live README. I update it as the project progresses.
