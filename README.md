@@ -128,7 +128,8 @@ Repeat for `spoke2.bicepparam` and `spoke3.bicepparam`.
 
 ## Documentation
 
-Go to the Documentation folder for additional documentation 
+Go to the Documentation folder for all documentation 
+
 ---
 
 ## What I Learned
