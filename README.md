@@ -69,31 +69,6 @@ triple and operations get complicated.
 | Bastion | 🔲 | Secure VM access without public IPs |
 | Firewall | 🔲 | Centralized traffic inspection (budget permitting) |
 
----
-
-## How It's Structured
-```
-infra/
-├── globals/
-│   └── naming.bicep                  # Centralized naming standards
-├── modules/
-│   └── network/
-│       ├── vnet.bicep                # Reusable VNet module
-│       ├── peering.bicep             # VNet peering module
-│       ├── nsg.bicep                 # NSG module
-│       └── nsg_associate.bicep       # NSG subnet association
-├── stacks/
-│   ├── hub/
-│   │   ├── main.bicep                # Hub deployment
-│   │   └── hub.bicepparam            # Hub parameters
-│   └── spokes/
-│       ├── main.bicep                # Spoke template (reused 3x)
-│       ├── spoke1.bicepparam         # Public app spoke
-│       ├── spoke2.bicepparam         # Intranet spoke
-│       └── spoke3.bicepparam         # AI-services spoke
-└── tests/
-    └── test-vms.bicep                # Temporary connectivity test VMs
-```
 
 Modules are the building blocks. Stacks are the orchestration. Parameter files are 
 what make each environment unique. One `vnet.bicep` module deployed four times — 
@@ -155,10 +130,11 @@ Repeat for `spoke2.bicepparam` and `spoke3.bicepparam`.
 
 | Doc | What it covers |
 |-----|---------------|
-| [NAMING.md](./docs/NAMING.md) | Naming convention and resource abbreviations |
-| [PEERING.md](./docs/PEERING.md) | VNet peering design and implementation |
-| [NSG.md](./docs/NSG.md) | NSG design, rules by spoke, conditional deployment |
-| [CONNECTIVITY.md](./docs/CONNECTIVITY.md) | Connectivity testing approach and cleanup |
+| [NAMING.md](./documentation/NamingConvention.md) | Naming convention and resource abbreviations |
+| [PEERING.md](./documentation/VNet Peering.md) | VNet peering design and implementation |
+| [NSG.md](./documentation/Network Security Groups.md) | NSG design, rules by spoke, conditional deployment |
+| [HUB AND SPOKE VNETS.md](./documentation/Hub and Spoke Vnets.md) | Hub and Spoke Virtual Network approach |
+| [CONNECTIVITY TESTING.md](./documentation/VM Testing.md) | Connectivity testing approach and cleanup |
 
 ---
 
