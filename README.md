@@ -1,117 +1,192 @@
-# Connectivity Testing
+# Azure Hub-and-Spoke Network Platform
 
-## What This Is
-After deploying the hub-spoke topology and NSGs, I needed to validate that the VNet 
-peering was actually working — that traffic could flow between the hub and spoke1 
-as expected. I did this by deploying temporary test VMs in each environment and 
-attempting to connect across the peering.
+I'm a **Senior Program Manager** transitioning into **Azure Infrastructure Engineering**. 
+I've spent years managing Azure projects — coordinating the teams, tracking the milestones, 
+managing the risks. This project is my way of proving I can actually build the thing, 
+not just manage it.
 
-## What I Was Testing
-- Hub ManagementSubnet → Spoke1 WebSubnet connectivity via VNet peering
-- That the NSG rules on WebSubnet allowed the expected traffic
-- That the peering established in Bicep works end to end, not just shows as 
-  "Connected" in the portal
+Everything here is built from scratch using Bicep, deployed via PowerShell, and 
+documented as I go.
 
-## Test VM Setup
+---
 
-Two temporary VMs were deployed using a separate `test-vms.bicep` file:
+## The Business Problem
 
-| VM | Resource Group | Subnet | Private IP |
-|----|---------------|--------|------------|
-| hub-test-vm | az-pola-dev-hubspoke-eastus-rg-hub | ManagementSubnet | 10.0.3.4 |
-| spoke1-test-vm | az-pola-dev-hubspoke-eastus-rg-spoke-public | WebSubnet | 10.1.0.4 |
+A professional services firm with 1,000 employees is moving workloads to Azure. They 
+have three very different environments that need to coexist securely:
 
-Both VMs use SSH key authentication. No passwords.
+**Customer-facing web application**
+A client portal used by 5,000+ external customers to access project updates, documents, 
+and billing. It needs to be internet-accessible, highly available, and protected from 
+attacks.
 
-A temporary NSG rule (`Test-SSH`) was added manually to the WebSubnet NSG to allow 
-inbound SSH on port 22 during testing. This rule is not part of the permanent NSG 
-design and was removed after testing.
+**Internal employee intranet**
+SharePoint, HR systems, file shares — the stuff all 1,000 employees use every day. 
+This should never be directly exposed to the internet but needs connectivity back to 
+on-premises systems.
 
-A temporary public IP (`hub-test-vm-pip`) was attached to the hub VM's primary NIC 
-to allow SSH access from outside Azure. This was also removed after testing.
+**AI experimentation environment**
+The data science team is building ML models on sensitive client data. This needs strict 
+isolation — a misconfiguration here could expose data or run up a massive compute bill.
 
-## Lessons Learned
-- Private IPs are not reachable from outside Azure — you need a public IP or Bastion 
-  to get in from your local machine
-- Source port ranges in NSG rules should always be `*` — port numbers like 22 go in 
-  the destination port, not the source
-- The hub ManagementSubnet has no NSG by design — shared services subnets are 
-  controlled at the spoke level
-- A VM showing `ProvisioningState: Succeeded` in a Bicep deployment doesn't 
-  automatically mean it has a public IP — that has to be explicitly configured
+The challenge: these workloads need to coexist in Azure without being able to compromise 
+each other.
 
-## Cleanup
-After testing, remove all temporary resources to avoid unnecessary costs:
+---
 
-### Remove public IPs
-```powershell
-# Detach public IP from hub VM NIC
-$nic = Get-AzNetworkInterface `
-  -Name "hub-test-vm-nic" `
-  -ResourceGroupName "az-pola-dev-hubspoke-eastus-rg-hub"
-$nic.IpConfigurations[0].PublicIpAddress = $null
-Set-AzNetworkInterface -NetworkInterface $nic
+## The Architecture
 
-# Delete the public IP resource
-Remove-AzPublicIpAddress `
-  -Name "hub-test-vm-pip" `
-  -ResourceGroupName "az-pola-dev-hubspoke-eastus-rg-hub" `
-  -Force
+Hub-and-spoke was the right answer. One central hub hosts shared services. Three isolated 
+spokes host the workloads. All traffic between spokes routes through the hub for 
+inspection and control.
+```
+![Azure Hub-and-Spoke Architecture](./documentation/diagrams/hub-spoke-architecture.png)
+
+**Why not one big VNet?**
+A breach in the web application could pivot straight to HR data or AI training sets. 
+Not acceptable.
+
+**Why not three isolated VNets?**
+No way to share services, centralize monitoring, or run a single VPN gateway. Costs 
+triple and operations get complicated.
+
+**Hub-and-spoke gives you both** — workload isolation and centralized shared services.
+
+---
+
+## What's Built
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| Naming convention | ✅ | Consistent across all resources |
+| VNet module | ✅ | Reusable, deployed 4x |
+| Hub stack | ✅ | 4 subnets, shared services foundation |
+| Spoke stacks | ✅ | 3 spokes, each with its own param file |
+| VNet peering | ✅ | Bidirectional, confirmed Connected in portal |
+| NSGs | ✅ | Conditional deployment, least-privilege rules |
+| Connectivity testing | ✅ | Test VMs deployed, peering validated |
+| CI/CD pipelines | 🔲 | GitHub Actions — up next |
+| Bastion | 🔲 | Secure VM access without public IPs |
+| Firewall | 🔲 | Centralized traffic inspection (budget permitting) |
+
+---
+
+## How It's Structured
+```
+infra/
+├── globals/
+│   └── naming.bicep                  # Centralized naming standards
+├── modules/
+│   └── network/
+│       ├── vnet.bicep                # Reusable VNet module
+│       ├── peering.bicep             # VNet peering module
+│       ├── nsg.bicep                 # NSG module
+│       └── nsg_associate.bicep       # NSG subnet association
+├── stacks/
+│   ├── hub/
+│   │   ├── main.bicep                # Hub deployment
+│   │   └── hub.bicepparam            # Hub parameters
+│   └── spokes/
+│       ├── main.bicep                # Spoke template (reused 3x)
+│       ├── spoke1.bicepparam         # Public app spoke
+│       ├── spoke2.bicepparam         # Intranet spoke
+│       └── spoke3.bicepparam         # AI-services spoke
+└── tests/
+    └── test-vms.bicep                # Temporary connectivity test VMs
 ```
 
-### Remove test VMs and associated resources
+Modules are the building blocks. Stacks are the orchestration. Parameter files are 
+what make each environment unique. One `vnet.bicep` module deployed four times — 
+no duplicated code.
+
+---
+
+## Key Design Decisions
+
+**One template, three spokes**
+The same `spokes/main.bicep` deploys all three spokes using different parameter files. 
+This supports independent team ownership — the web team deploys spoke1, IT deploys 
+spoke2, data science deploys spoke3. Adding a fourth spoke means writing a new param 
+file, not touching the template.
+
+**Peering lives in the spoke deployment**
+Both directions of peering (spoke→hub and hub→spoke) are created when a spoke is 
+deployed. This means you can't deploy a spoke and forget to peer it — the peering 
+is automatic.
+
+**NSGs are data-driven**
+Each spoke has different subnets so I couldn't just create all NSGs every time. The 
+template uses Bicep's `filter()` function to check whether a subnet exists before 
+creating or attaching its NSG. No orphaned resources, no hardcoded spoke names.
+
+**One subscription for the lab**
+In a real enterprise setup this would be three subscriptions — Dev, Test, and Prod — 
+for isolated billing, cleaner RBAC, and blast-radius containment. For this lab, one 
+subscription with environment differentiation in the naming convention is the right 
+tradeoff.
+
+---
+
+## How to Deploy
+
+**1. Deploy the hub first:**
 ```powershell
-# Delete hub test VM
-Remove-AzVM `
-  -Name "hub-test-vm" `
-  -ResourceGroupName "az-pola-dev-hubspoke-eastus-rg-hub" `
-  -Force
-
-# Delete spoke1 test VM
-Remove-AzVM `
-  -Name "spoke1-test-vm" `
-  -ResourceGroupName "az-pola-dev-hubspoke-eastus-rg-spoke-public" `
-  -Force
-
-# Delete NICs
-Remove-AzNetworkInterface `
-  -Name "hub-test-vm-nic" `
-  -ResourceGroupName "az-pola-dev-hubspoke-eastus-rg-hub" `
-  -Force
-
-Remove-AzNetworkInterface `
-  -Name "spoke1-test-vm-nic" `
-  -ResourceGroupName "az-pola-dev-hubspoke-eastus-rg-spoke-public" `
-  -Force
-
-# Delete OS disks
-Remove-AzDisk `
-  -ResourceGroupName "az-pola-dev-hubspoke-eastus-rg-hub" `
-  -DiskName "hub-test-vm-osdisk" `
-  -Force
-
-Remove-AzDisk `
-  -ResourceGroupName "az-pola-dev-hubspoke-eastus-rg-spoke-public" `
-  -DiskName "spoke1-test-vm-osdisk" `
-  -Force
+New-AzSubscriptionDeployment `
+  -Name hub-deployment `
+  -Location eastus `
+  -TemplateFile ./infra/stacks/hub/main.bicep `
+  -TemplateParameterFile ./infra/stacks/hub/hub.bicepparam
 ```
 
-### Remove temporary NSG rule
-Go to the portal → WebSubnet NSG → Inbound rules → delete `Test-SSH`.
-
-Or via PowerShell:
+**2. Deploy each spoke:**
 ```powershell
-$nsg = Get-AzNetworkSecurityGroup `
-  -Name "az-pola-dev-hubspoke-eastus-nsg-web-public" `
-  -ResourceGroupName "az-pola-dev-hubspoke-eastus-rg-spoke-public"
-
-Remove-AzNetworkSecurityRuleConfig `
-  -Name "Test-SSH" `
-  -NetworkSecurityGroup $nsg
-
-Set-AzNetworkSecurityGroup -NetworkSecurityGroup $nsg
+New-AzSubscriptionDeployment `
+  -Name spoke1-deployment `
+  -Location eastus `
+  -TemplateFile ./infra/stacks/spokes/main.bicep `
+  -TemplateParameterFile ./infra/stacks/spokes/spoke1.bicepparam
 ```
 
-## Cost Note
-Test VMs and public IPs accrue charges while running. Always clean up after 
-connectivity testing in lab environments.
+Repeat for `spoke2.bicepparam` and `spoke3.bicepparam`.
+
+---
+
+## Documentation
+
+| Doc | What it covers |
+|-----|---------------|
+| [NAMING.md](./docs/NAMING.md) | Naming convention and resource abbreviations |
+| [PEERING.md](./docs/PEERING.md) | VNet peering design and implementation |
+| [NSG.md](./docs/NSG.md) | NSG design, rules by spoke, conditional deployment |
+| [CONNECTIVITY.md](./docs/CONNECTIVITY.md) | Connectivity testing approach and cleanup |
+
+---
+
+## What I Learned
+
+* **Bicep modules are worth the upfront effort.** Writing `vnet.bicep` once and 
+  reusing it four times was far cleaner than copy-pasting similar code.
+* **Naming matters more than you expect.** During an interview demo, I don't want 
+  to guess which environment a resource belongs to.
+* **Infrastructure should be boring.** The goal isn't clever code — it's reliable, 
+  repeatable deployments that others can understand and extend.
+* **Deployment sequence is a real constraint.** You can't peer what doesn't exist 
+  yet. Thinking through dependency order before writing code saves a lot of back 
+  and forth.
+* **`filter()` over `contains()` for object arrays.** Learned this the hard way 
+  when trying to write conditional NSG deployment.
+* **Private IPs are private.** You can't SSH to a VM from your laptop using its 
+  private IP. Need a public IP or Bastion. Learned this the hard way too.
+
+---
+
+## Tools & Technologies
+
+| Tool | How I used it |
+|------|--------------|
+| Azure Bicep | All infrastructure as code |
+| PowerShell (Az module) | Deployments and resource queries |
+| GitHub | Version control and portfolio |
+| VS Code | Development environment |
+| Azure Portal | Validation and troubleshooting |
+| Claude AI | Technical advisor — coaches me through problems, doesn't just give me answers |
