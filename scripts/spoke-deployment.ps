@@ -1,0 +1,18 @@
+New-AzSubscriptionDeployment `
+  -Name spoke1-deployment `
+  -Location eastus `
+  -TemplateFile ./infra/stacks/spokes/main.bicep `
+  -TemplateParameterFile ./infra/stacks/spokes/spoke1.bicepparam
+
+
+New-AzSubscriptionDeployment `
+  -Name spoke2-deployment `
+  -Location eastus `
+  -TemplateFile ./infra/stacks/spokes/main.bicep `
+  -TemplateParameterFile ./infra/stacks/spokes/spoke2.bicepparam
+
+New-AzSubscriptionDeployment `
+  -Name spoke3-deployment `
+  -Location eastus `
+  -TemplateFile ./infra/stacks/spokes/main.bicep `
+  -TemplateParameterFile ./infra/stacks/spokes/spoke3.bicepparam

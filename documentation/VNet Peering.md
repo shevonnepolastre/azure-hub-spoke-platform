@@ -1,20 +1,31 @@
+Here's the rewrite in your voice:
+
+```markdown
 # VNet Peering Implementation
 
 ## Research & Planning
 
-Before writing code, I reviewed Microsoft's documentation to understand the recommended approach:
+Before writing any code I went through Microsoft's documentation to understand the 
+recommended approach:
 - [VNet Peering Bicep reference](https://learn.microsoft.com/en-us/azure/templates/microsoft.network/virtualnetworks/virtualnetworkpeerings?pivots=deployment-language-bicep)
 - [Azure Quickstart templates](https://github.com/Azure/azure-quickstart-templates/blob/master/quickstarts/microsoft.network/existing-vnet-to-vnet-peering/main.bicep)
 
-## Design Decision: When to Create Peerings
+## When to Create the Peerings
 
-I had to decide when in the deployment process to establish peerings. Since peering requires both vnets to exist, I couldn't peer during hub deployment (spokes don't exist yet). 
+This took some thinking. Peering requires both VNets to exist first, so I couldn't 
+do it during hub deployment — the spokes don't exist yet at that point. I worked 
+through this with Claude AI, which I have configured to coach me through problems 
+rather than just hand me the answer. That conversation helped me realize the peering 
+had to live inside the spoke deployment, not the hub.
 
-I have ClaudeAI configured so that it doesn't give me the bicep code, but advises and coaches me in thinking on how to approach it.  It helped me realize that the hub and spokes need to be created before the peering can be made. Therefore, the peering needs to be part of the spoke bicep.  
+I want to be clear about using AI — there's nothing wrong with it. Senior engineers 
+use it too. The key is using it in a way that makes you actually learn, not just 
+copying whatever it gives you.
 
-## Modular Implementation
+## How It's Built
 
-Following the modular pattern used throughout this project, I created a reusable `peering.bicep` module:
+I followed the same modular pattern used throughout this project and created a 
+reusable `peering.bicep` module:
 
 ```bicep
 // modules/network/peering.bicep
@@ -27,12 +38,10 @@ param remoteVnetId string
 @description('Name for this peering connection')
 param peeringName string
 
-// Reference existing local vnet
 resource localVnet 'Microsoft.Network/virtualNetworks@2024-01-01' existing = {
   name: localVnetName
 }
 
-// Create peering as child of local vnet
 resource peering 'Microsoft.Network/virtualNetworks/virtualNetworkPeerings@2024-01-01' = {
   parent: localVnet
   name: peeringName
@@ -51,17 +60,16 @@ output peeringId string = peering.id
 output peeringName string = peering.name
 ```
 
-This module gets called **twice** per spoke - once for each direction.
+This module gets called **twice** per spoke — once for each direction.
 
-## Spoke Deployment with Automatic Peering
-
-In `stacks/spokes/main.bicep`, after creating the spoke vnet, I call the peering module twice:
+In `stacks/spokes/main.bicep`, after the spoke VNet is created, I call the peering 
+module twice:
 
 ```bicep
 // Peering: Spoke → Hub (lives in spoke vnet)
 module spokeToHub '../../modules/network/peering.bicep' = {
   name: 'peering-spoke-${spokeName}-to-hub'
-  scope: spokeRg  // Deploy to spoke resource group
+  scope: spokeRg
   params: {
     localVnetName: spokeVnet.outputs.vnetName
     remoteVnetId: hubVnetId
@@ -72,7 +80,7 @@ module spokeToHub '../../modules/network/peering.bicep' = {
 // Peering: Hub → Spoke (lives in hub vnet)
 module hubToSpoke '../../modules/network/peering.bicep' = {
   name: 'peering-hub-to-spoke-${spokeName}'
-  scope: resourceGroup(hubRgName)  // Deploy to hub resource group
+  scope: resourceGroup(hubRgName)  // deploys to hub resource group
   params: {
     localVnetName: hubVnetName
     remoteVnetId: spokeVnet.outputs.vnetId
@@ -83,54 +91,50 @@ module hubToSpoke '../../modules/network/peering.bicep' = {
 
 ## Getting the Hub VNet ID
 
-Each spoke needs the hub's vnet resource ID to establish peering. I retrieved this using PowerShell:
+Each spoke needs the hub VNet resource ID to establish peering. I pulled it using 
+PowerShell:
 
 ```powershell
-# First, find the hub vnet details
-Get-AzVirtualNetwork | Where-Object {$_.Name -like "*hub*"}
-
-# Then get the full resource ID
 $hubVnetId = (Get-AzVirtualNetwork `
   -Name az-pola-dev-hubspoke-eastus-vnet-hub `
   -ResourceGroupName az-pola-dev-hubspoke-eastus-rg-hub).Id
-
-# Output: /subscriptions/.../virtualNetworks/az-pola-dev-hubspoke-eastus-vnet-hub
 ```
 
-I added this ID to each spoke's parameter file:
+Then added it to each spoke's parameter file:
 
 ```bicep
-// spoke1.bicepparam
-using './main.bicep'
-
-param spokeName = 'app'
 param hubVnetId = '/subscriptions/83b96920-b3ed-4bd2-83cd-6984eca563a4/resourceGroups/az-pola-dev-hubspoke-eastus-rg-hub/providers/Microsoft.Network/virtualNetworks/az-pola-dev-hubspoke-eastus-vnet-hub'
-param addressPrefix = '10.1.0.0/16'
-// ... subnets ...
 ```
 
-## Validation
+## Deployment
 
-Before deploying, I validated the template using the Bicep linter:
+Before deploying I ran the Bicep linter to catch errors:
 
 ```bash
 bicep build main.bicep
 ```
 
-There were errors as anyone would expect.  I went and resolved each of the errors that the linter found.  After the 5th or 6th attempt, all errors had been resolved. 
+There were errors — that's expected. I worked through them one by one. After about 
+five or six attempts everything was clean and the deployment went through. Seeing 
+the peerings show up in the portal as Connected and Fully Synchronized was a good 
+moment.
 
-## Deployment & Verification
+## What I Learned
 
-After deploying each spoke, I verified peering status in the Azure Portal.  I was beyond happy when I saw that the peerings had been created. 
+**Scope matters more than you'd think.** I initially tried to create both peerings 
+in the spoke's resource group. That failed because the hub→spoke peering has to be 
+a child of the hub VNet. Once I understood that modules can deploy to different 
+resource groups using the `scope` parameter, it clicked.
 
-## Lessons Learned
+**Azure doesn't create the return peering automatically.** Both directions have to 
+be explicitly defined. I put both inside the spoke deployment so there's no separate 
+step to forget.
 
-**Working with Claude:** I used Claude AI as a technical advisor throughout this project, with specific instructions to guide me rather than provide complete solutions. When I asked about peering implementation, Claude helped me think through the deployment sequence and dependencies without just handing me the code. This forced me to understand *why* peerings needed to be created during spoke deployment rather than just copying a solution.  There is nothing wrong with using AI. Even senior-level people use it, so do not think that you can't use it.  You just have to use it in a way that will help you learn; not just giving you the answer. 
-
-**Scope matters:** Initially, I tried to create both peerings in the spoke's resource group. This failed because the hub→spoke peering needs to be a child of the hub vnet. Understanding the `scope` parameter and how modules can deploy to different resource groups was key.
-
-**Bidirectional is manual:** Azure doesn't automatically create the return peering. Both directions must be explicitly defined. I chose to create both peerings from the spoke deployment so there's no separate peering step to forget.
+**Deployment sequence is a real constraint.** You can't peer what doesn't exist yet. 
+Thinking through the dependency order before writing code saved a lot of back and 
+forth.
 
 ## Cost
 
-Being that I am using my own tenant, I made sure that the creationg of peerings would not come with a substanial cost. Fortunately, it doesn't. It seems to be very minimal.  
+I'm running this in my own tenant so I wanted to make sure peering wouldn't rack up 
+a big bill. It's very minimal — not something to worry about in a lab environment.

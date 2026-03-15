@@ -1,4 +1,4 @@
-using './hubmain.bicep'
+using './main.bicep'
 
 param addressPrefix = '10.0.0.0/16'  // Hub VNet address space
 

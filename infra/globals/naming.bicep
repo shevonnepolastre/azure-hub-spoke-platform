@@ -69,4 +69,5 @@ output namingPatterns object = patterns
 output location string = location
 output environment string = environment
 output prefix string = prefix
+output nsgName string = naming.nsg
 
